@@ -3,6 +3,7 @@ LLAMA_PATH = ".../project/Llama-2-7b-chat-hf" # ADD PATH
 
 VICUNA_API_LINK ="https://..." # ADD LINK
 LLAMA_API_LINK = "https://..." # ADD LINK
+OLLAMA_API_LINK = "http://localhost:11434/api/chat" # Ollama API endpoint
 
 
 ATTACK_TEMP = 1

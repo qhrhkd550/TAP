@@ -258,13 +258,17 @@ if __name__ == '__main__':
         "--attack-model",
         default = "vicuna",
         help = "Name of attacking model.",
-        choices=["vicuna", 
-                 "vicuna-api-model", 
-                 "gpt-3.5-turbo", 
-                 "gpt-4", 
-                 "gpt-4-turbo", 
+        choices=["vicuna",
+                 "vicuna-api-model",
+                 "gpt-3.5-turbo",
+                 "gpt-4",
+                 "gpt-4-turbo",
                  "gpt-4-1106-preview", # This is same as gpt-4-turbo
-                 'llama-2-api-model']
+                 'llama-2-api-model',
+                 'ollama-llama2',
+                 'ollama-mistral',
+                 'ollama-mixtral',
+                 'ollama-vicuna']
     )
     parser.add_argument(
         "--attack-max-n-tokens",
@@ -286,15 +290,19 @@ if __name__ == '__main__':
         default = "vicuna",
         help = "Name of target model.",
         choices=["llama-2",
-                 'llama-2-api-model', 
+                 'llama-2-api-model',
                  "vicuna",
-                 'vicuna-api-model', 
-                 "gpt-3.5-turbo", 
+                 'vicuna-api-model',
+                 "gpt-3.5-turbo",
                  "gpt-4",
-                 'gpt-4-turbo', 
+                 'gpt-4-turbo',
                  'gpt-4-1106-preview', # This is same as gpt-4-turbo
                  "palm-2",
                  "gemini-pro",
+                 'ollama-llama2',
+                 'ollama-mistral',
+                 'ollama-mixtral',
+                 'ollama-vicuna',
                  ]
     )
     parser.add_argument(

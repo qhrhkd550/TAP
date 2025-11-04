@@ -1,6 +1,6 @@
 
 import common
-from language_models import GPT, PaLM, HuggingFace, APIModelLlama7B, APIModelVicuna13B, GeminiPro
+from language_models import GPT, PaLM, HuggingFace, APIModelLlama7B, APIModelVicuna13B, GeminiPro, Ollama
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from config import VICUNA_PATH, LLAMA_PATH, ATTACK_TEMP, TARGET_TEMP, ATTACK_TOP_P, TARGET_TOP_P, MAX_PARALLEL_STREAMS 
@@ -88,7 +88,7 @@ class AttackLLM():
         for conv, prompt in zip(convs_list, prompts_list):
             conv.append_message(conv.roles[0], prompt)
             # Get prompts
-            if "gpt" in self.model_name:
+            if "gpt" in self.model_name or "ollama" in self.model_name:
                 full_prompts.append(conv.to_openai_api_messages())
             else:
                 conv.append_message(conv.roles[1], init_message)
@@ -122,8 +122,8 @@ class AttackLLM():
             new_indices_to_regenerate = []
             for i, full_output in enumerate(outputs_list):
                 orig_index = indices_to_regenerate[i]
-                
-                if "gpt" not in self.model_name:
+
+                if "gpt" not in self.model_name and "ollama" not in self.model_name:
                     full_output = init_message + full_output
 
                 attack_dict, json_str = common.extract_json(full_output)
@@ -176,13 +176,13 @@ class TargetLLM():
         full_prompts = []
         for conv, prompt in zip(convs_list, prompts_list):
             conv.append_message(conv.roles[0], prompt)
-            if "gpt" in self.model_name:
-                # OpenAI does not have separators
+            if "gpt" in self.model_name or "ollama" in self.model_name:
+                # OpenAI and Ollama use the same message format
                 full_prompts.append(conv.to_openai_api_messages())
             elif "palm" in self.model_name:
                 full_prompts.append(conv.messages[-1][1])
             else:
-                conv.append_message(conv.roles[1], None) 
+                conv.append_message(conv.roles[1], None)
                 full_prompts.append(conv.get_prompt())
 
         # Query the attack LLM in batched-queries with at most MAX_PARALLEL_STREAMS-many queries at a time
@@ -209,9 +209,9 @@ class TargetLLM():
 
 def load_indiv_model(model_name):
     model_path, template = get_model_path_and_template(model_name)
-    
+
     common.MODEL_NAME = model_name
-    
+
     if model_name in ["gpt-3.5-turbo", "gpt-4", 'gpt-4-1106-preview']:
         lm = GPT(model_name)
     elif model_name == "palm-2":
@@ -222,6 +222,10 @@ def load_indiv_model(model_name):
         lm = APIModelLlama7B(model_name)
     elif model_name == 'vicuna-api-model':
         lm = APIModelVicuna13B(model_name)
+    elif 'ollama' in model_name:
+        # Extract the actual model name from the format "ollama-modelname"
+        actual_model = model_name.replace('ollama-', '')
+        lm = Ollama(actual_model)
     else:
         model = AutoModelForCausalLM.from_pretrained(
                 model_path, 
@@ -290,6 +294,13 @@ def get_model_path_and_template(model_name):
             "template": "gemini-pro"
         }
     }
+
+    # Handle Ollama models dynamically
+    if 'ollama' in model_name:
+        # For Ollama models, we use a generic template (similar to GPT)
+        # The actual model name will be extracted in load_indiv_model
+        return None, "gpt-3.5-turbo"
+
     path, template = full_model_dict[model_name]["path"], full_model_dict[model_name]["template"]
     return path, template
 
