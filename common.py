@@ -22,24 +22,48 @@ def extract_json(s):
         dict: A dictionary containing the extracted values.
         str: The cleaned JSON string.
     """
+    print(f"\n[DEBUG] extract_json called")
+    print(f"[DEBUG] Input length: {len(s)}")
+    print(f"[DEBUG] Input preview: {s[:300]}...")
+
     # Extract the string that looks like a JSON
     start_pos = s.find("{")
     end_pos = s.find("}") + 1  # +1 to include the closing brace
 
-    if end_pos == -1:
-        logging.error("Error extracting potential JSON structure")
-        logging.error(f"Input:\n {s}")
+    if end_pos == -1 or start_pos == -1:
+        print(f"[DEBUG] ✗ No JSON braces found (start={start_pos}, end={end_pos})")
+        logging.error("Error extracting potential JSON structure - no braces found")
+        logging.error(f"Input:\n {s[:500]}")
         return None, None
 
     json_str = s[start_pos:end_pos]
+    print(f"[DEBUG] Extracted JSON string: {json_str[:200]}...")
+
     json_str = json_str.replace("\n", "")  # Remove all line breaks
+    print(f"[DEBUG] After newline removal: {json_str[:200]}...")
 
     try:
         parsed = ast.literal_eval(json_str)
+        print(f"[DEBUG] ✓ Successfully parsed JSON")
+        print(f"[DEBUG] Parsed keys: {list(parsed.keys())}")
+
         if not all(x in parsed for x in ["improvement","prompt"]):
+            print(f"[DEBUG] ✗ Missing required keys. Has: {list(parsed.keys())}, Need: ['improvement', 'prompt']")
             return None, None
+
+        print(f"[DEBUG] ✓ All required keys present")
+        print(f"[DEBUG] improvement: {str(parsed.get('improvement', ''))[:100]}...")
+        print(f"[DEBUG] prompt: {str(parsed.get('prompt', ''))[:100]}...")
         return parsed, json_str
-    except:
+    except SyntaxError as e:
+        print(f"[DEBUG] ✗ SyntaxError parsing JSON: {e}")
+        print(f"[DEBUG] Problematic JSON: {json_str}")
+        logging.error(f"SyntaxError in extract_json: {e}")
+        return None, None
+    except Exception as e:
+        print(f"[DEBUG] ✗ Exception parsing JSON: {type(e).__name__}: {e}")
+        print(f"[DEBUG] Problematic JSON: {json_str}")
+        logging.error(f"Exception in extract_json: {e}")
         return None, None
 
 def get_init_msg(goal, target):
