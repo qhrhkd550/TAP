@@ -1,11 +1,7 @@
 import re
 
-from fastchat.model import (
-    get_conversation_template
-)
-
+from common import get_conversation_template
 from system_prompts import get_evaluator_system_prompt_for_judge, get_evaluator_system_prompt_for_on_topic
-
 from language_models import Ollama
 
 def load_evaluator(args):
