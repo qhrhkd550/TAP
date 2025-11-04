@@ -14,6 +14,11 @@ def clean_attacks_and_convs(attack_list, convs_list):
         Remove any failed attacks (which appear as None) and corresponding conversations
     """
     tmp = [(a, c) for (a, c) in zip(attack_list, convs_list) if a is not None]
+
+    # If all attacks failed, return empty lists
+    if len(tmp) == 0:
+        return [], []
+
     tmp = [*zip(*tmp)]
     attack_list, convs_list = list(tmp[0]), list(tmp[1])
 
@@ -147,8 +152,22 @@ def main(args):
         # Remove any failed attacks and corresponding conversations
         convs_list = copy.deepcopy(convs_list_new)
         extracted_attack_list, convs_list = clean_attacks_and_convs(extracted_attack_list, convs_list)
-        
-        
+
+        # Check if all attacks failed
+        if len(extracted_attack_list) == 0:
+            print("\n" + "="*60)
+            print("ERROR: All attack generation attempts failed!")
+            print("="*60)
+            print("\nPossible causes:")
+            print("1. Ollama server is not running (run 'ollama serve')")
+            print("2. Model not pulled (run 'ollama pull <model-name>')")
+            print("3. Ollama API endpoint is incorrect in config.py")
+            print(f"   Current endpoint: {evaluator_llm.evaluator_model.API_HOST_LINK if hasattr(evaluator_llm, 'evaluator_model') else 'N/A'}")
+            print("4. Model is generating invalid JSON responses")
+            print("\nPlease fix the issue and try again.")
+            print("="*60 + "\n")
+            return
+
         adv_prompt_list = [attack["prompt"] for attack in extracted_attack_list]
         improv_list = [attack["improvement"] for attack in extracted_attack_list]
         
