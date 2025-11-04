@@ -1,9 +1,7 @@
 
 import common
-from language_models import HuggingFace, APIModelLlama7B, APIModelVicuna13B, Ollama
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from config import VICUNA_PATH, LLAMA_PATH, ATTACK_TEMP, TARGET_TEMP, ATTACK_TOP_P, TARGET_TOP_P, MAX_PARALLEL_STREAMS 
+from language_models import Ollama
+from config import ATTACK_TEMP, TARGET_TEMP, ATTACK_TOP_P, TARGET_TOP_P, MAX_PARALLEL_STREAMS 
 
 def load_target_model(args):
     target_llm = TargetLLM(model_name = args.target_model, 
@@ -52,10 +50,6 @@ class AttackLLM():
         self.max_n_attack_attempts = max_n_attack_attempts
         self.top_p = top_p
         self.model, self.template = load_indiv_model(model_name)
-        
-        if "vicuna" in model_name or "llama" in model_name:
-            if "api-model" not in model_name:
-                self.model.extend_eos_tokens()
 
     def get_attack(self, convs_list, prompts_list):
         """
@@ -206,71 +200,20 @@ class TargetLLM():
 
 
 def load_indiv_model(model_name):
-    model_path, template = get_model_path_and_template(model_name)
+    _, template = get_model_path_and_template(model_name)
 
     common.MODEL_NAME = model_name
 
-    if model_name == 'llama-2-api-model':
-        lm = APIModelLlama7B(model_name)
-    elif model_name == 'vicuna-api-model':
-        lm = APIModelVicuna13B(model_name)
-    elif 'ollama' in model_name:
-        # Extract the actual model name from the format "ollama-modelname"
-        actual_model = model_name.replace('ollama-', '')
-        lm = Ollama(actual_model)
-    else:
-        model = AutoModelForCausalLM.from_pretrained(
-                model_path, 
-                torch_dtype=torch.float16,
-                low_cpu_mem_usage=True,
-                device_map="auto").eval()
+    # All models are Ollama models
+    # Extract the actual model name from the format "ollama-modelname"
+    actual_model = model_name.replace('ollama-', '')
+    lm = Ollama(actual_model)
 
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_path,
-            use_fast=False
-        ) 
-
-        if 'llama-2' in model_path.lower():
-            tokenizer.pad_token = tokenizer.unk_token
-            tokenizer.padding_side = 'left'
-        if 'vicuna' in model_path.lower():
-            tokenizer.pad_token = tokenizer.eos_token
-            tokenizer.padding_side = 'left'
-        if not tokenizer.pad_token:
-            tokenizer.pad_token = tokenizer.eos_token
-
-        lm = HuggingFace(model_name, model, tokenizer)
-    
     return lm, template
 
 def get_model_path_and_template(model_name):
-    full_model_dict={
-        "vicuna":{
-            "path": VICUNA_PATH,
-            "template":"vicuna_v1.1"
-        },
-        "vicuna-api-model":{
-            "path": None,
-            "template": "vicuna_v1.1"
-        },
-        "llama-2":{
-            "path": LLAMA_PATH,
-            "template":"llama-2"
-        },
-        "llama-2-api-model":{
-            "path": None,
-            "template": "llama-2-7b"
-        }
-    }
-
-    # Handle Ollama models dynamically
-    if 'ollama' in model_name:
-        # For Ollama models, we use a generic template (similar to GPT)
-        # The actual model name will be extracted in load_indiv_model
-        return None, "gpt-3.5-turbo"
-
-    path, template = full_model_dict[model_name]["path"], full_model_dict[model_name]["template"]
-    return path, template
+    # All models are Ollama models using OpenAI-compatible format
+    return None, "gpt-3.5-turbo"
 
 
 
