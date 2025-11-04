@@ -75,18 +75,14 @@ class AttackLLM():
         if len(convs_list[0].messages) == 0:
             init_message = """{\"improvement\": \"\",\"prompt\": \""""
         else:
-            init_message = """{\"improvement\": \"""" 
+            init_message = """{\"improvement\": \""""
 
         full_prompts = []
         # Add prompts and initial seeding messages to conversations (only once)
         for conv, prompt in zip(convs_list, prompts_list):
             conv.append_message(conv.roles[0], prompt)
-            # Get prompts
-            if "ollama" in self.model_name:
-                full_prompts.append(conv.to_openai_api_messages())
-            else:
-                conv.append_message(conv.roles[1], init_message)
-                full_prompts.append(conv.get_prompt()[:-len(conv.sep2)])
+            # All models use OpenAI API format (Ollama compatible)
+            full_prompts.append(conv.to_openai_api_messages())
             
         for _ in range(self.max_n_attack_attempts):
             # Subset conversations based on indices to regenerate
@@ -117,9 +113,7 @@ class AttackLLM():
             for i, full_output in enumerate(outputs_list):
                 orig_index = indices_to_regenerate[i]
 
-                if "gpt" not in self.model_name and "ollama" not in self.model_name:
-                    full_output = init_message + full_output
-
+                # Ollama returns complete JSON, no need to prepend init_message
                 attack_dict, json_str = common.extract_json(full_output)
                 
                 if attack_dict is not None:
@@ -170,12 +164,8 @@ class TargetLLM():
         full_prompts = []
         for conv, prompt in zip(convs_list, prompts_list):
             conv.append_message(conv.roles[0], prompt)
-            if "ollama" in self.model_name:
-                # Ollama uses OpenAI-compatible message format
-                full_prompts.append(conv.to_openai_api_messages())
-            else:
-                conv.append_message(conv.roles[1], None)
-                full_prompts.append(conv.get_prompt())
+            # All models use OpenAI API format (Ollama compatible)
+            full_prompts.append(conv.to_openai_api_messages())
 
         # Query the attack LLM in batched-queries with at most MAX_PARALLEL_STREAMS-many queries at a time
         outputs_list = []
