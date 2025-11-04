@@ -6,11 +6,11 @@ from fastchat.model import (
 
 from system_prompts import get_evaluator_system_prompt_for_judge, get_evaluator_system_prompt_for_on_topic
 
-from language_models import GPT
+from language_models import Ollama
 
 def load_evaluator(args):
-    if "gpt" in args.evaluator_model:
-        return GPTEvaluator(args)
+    if "ollama" in args.evaluator_model:
+        return OllamaEvaluator(args)
     elif args.evaluator_model == "no-evaluator":
         return NoEvaluator(args)
     else:
@@ -73,47 +73,50 @@ class NoEvaluator(EvaluatorBase):
     def on_topic_score(self, attack_prompt_list, original_prompt):
         return [1 for _ in attack_prompt_list] 
 
-class GPTEvaluator(EvaluatorBase):
+class OllamaEvaluator(EvaluatorBase):
     def __init__(self, args):
-        super(GPTEvaluator, self).__init__(args)
-        self.evaluator_model = GPT(model_name = self.evaluator_name)
+        super(OllamaEvaluator, self).__init__(args)
+        # Extract the actual model name from "ollama-modelname" format
+        actual_model = self.evaluator_name.replace('ollama-', '')
+        self.evaluator_model = Ollama(model_name=actual_model)
 
     def create_conv(self, full_prompt, system_prompt=None):
         if system_prompt is None:
             system_prompt = self.system_prompt
-        
-        conv = get_conversation_template(self.evaluator_name)
+
+        # Use gpt-3.5-turbo template for Ollama (OpenAI-compatible format)
+        conv = get_conversation_template("gpt-3.5-turbo")
         conv.set_system_message(system_prompt)
         conv.append_message(conv.roles[0], full_prompt)
-        
+
         return conv.to_openai_api_messages()
 
     def judge_score(self, attack_prompt_list, target_response_list):
         convs_list = [
-                    self.create_conv(self.get_evaluator_prompt(prompt, response)) 
+                    self.create_conv(self.get_evaluator_prompt(prompt, response))
                     for prompt, response in zip(attack_prompt_list, target_response_list)
                 ]
 
         print(f'\tQuerying evaluator with {len(attack_prompt_list)} prompts (to evaluate judge scores)', flush=True)
 
-        raw_outputs = self.evaluator_model.batched_generate(convs_list, 
+        raw_outputs = self.evaluator_model.batched_generate(convs_list,
                                                         max_n_tokens = self.max_n_tokens,
                                                         temperature = self.temperature)
-        
+
         outputs = [self.process_output_judge_score(raw_output) for raw_output in raw_outputs]
         return outputs
 
     def on_topic_score(self, attack_prompt_list, original_prompt):
-         
-        
+
+
         convs_list = [
-                    self.create_conv(self.get_evaluator_prompt_on_topic(prompt), system_prompt=self.system_prompt_on_topic) 
+                    self.create_conv(self.get_evaluator_prompt_on_topic(prompt), system_prompt=self.system_prompt_on_topic)
                     for prompt in attack_prompt_list
                 ]
-        
+
         print(f'\tQuerying evaluator with {len(attack_prompt_list)} prompts (to evaluate on-topic scores)', flush=True)
 
-        raw_outputs = self.evaluator_model.batched_generate(convs_list, 
+        raw_outputs = self.evaluator_model.batched_generate(convs_list,
                                                         max_n_tokens = self.max_n_tokens,
                                                         temperature = self.temperature)
         outputs = [self.process_output_on_topic_score(raw_output) for raw_output in raw_outputs]

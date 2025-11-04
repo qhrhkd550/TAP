@@ -1,6 +1,6 @@
 
 import common
-from language_models import GPT, PaLM, HuggingFace, APIModelLlama7B, APIModelVicuna13B, GeminiPro, Ollama
+from language_models import HuggingFace, APIModelLlama7B, APIModelVicuna13B, Ollama
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from config import VICUNA_PATH, LLAMA_PATH, ATTACK_TEMP, TARGET_TEMP, ATTACK_TOP_P, TARGET_TOP_P, MAX_PARALLEL_STREAMS 
@@ -88,7 +88,7 @@ class AttackLLM():
         for conv, prompt in zip(convs_list, prompts_list):
             conv.append_message(conv.roles[0], prompt)
             # Get prompts
-            if "gpt" in self.model_name or "ollama" in self.model_name:
+            if "ollama" in self.model_name:
                 full_prompts.append(conv.to_openai_api_messages())
             else:
                 conv.append_message(conv.roles[1], init_message)
@@ -176,11 +176,9 @@ class TargetLLM():
         full_prompts = []
         for conv, prompt in zip(convs_list, prompts_list):
             conv.append_message(conv.roles[0], prompt)
-            if "gpt" in self.model_name or "ollama" in self.model_name:
-                # OpenAI and Ollama use the same message format
+            if "ollama" in self.model_name:
+                # Ollama uses OpenAI-compatible message format
                 full_prompts.append(conv.to_openai_api_messages())
-            elif "palm" in self.model_name:
-                full_prompts.append(conv.messages[-1][1])
             else:
                 conv.append_message(conv.roles[1], None)
                 full_prompts.append(conv.get_prompt())
@@ -212,13 +210,7 @@ def load_indiv_model(model_name):
 
     common.MODEL_NAME = model_name
 
-    if model_name in ["gpt-3.5-turbo", "gpt-4", 'gpt-4-1106-preview']:
-        lm = GPT(model_name)
-    elif model_name == "palm-2":
-        lm = PaLM(model_name)
-    elif model_name == "gemini-pro":
-        lm = GeminiPro(model_name)
-    elif model_name == 'llama-2-api-model':
+    if model_name == 'llama-2-api-model':
         lm = APIModelLlama7B(model_name)
     elif model_name == 'vicuna-api-model':
         lm = APIModelVicuna13B(model_name)
@@ -253,22 +245,6 @@ def load_indiv_model(model_name):
 
 def get_model_path_and_template(model_name):
     full_model_dict={
-        "gpt-4-1106-preview":{
-            "path":"gpt-4-1106-preview",
-            "template":"gpt-4-1106-preview"
-        },
-        "gpt-4-turbo":{
-            "path":"gpt-4-1106-preview",
-            "template":"gpt-4-1106-preview"
-        },
-        "gpt-4":{
-            "path":"gpt-4",
-            "template":"gpt-4"
-        },
-        "gpt-3.5-turbo": {
-            "path": "gpt-3.5-turbo",
-            "template":"gpt-3.5-turbo"
-        },
         "vicuna":{
             "path": VICUNA_PATH,
             "template":"vicuna_v1.1"
@@ -284,14 +260,6 @@ def get_model_path_and_template(model_name):
         "llama-2-api-model":{
             "path": None,
             "template": "llama-2-7b"
-        },
-        "palm-2":{
-            "path":"palm-2",
-            "template":"palm-2"
-        },
-        "gemini-pro": {
-            "path": "gemini-pro",
-            "template": "gemini-pro"
         }
     }
 
